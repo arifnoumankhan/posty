@@ -1,0 +1,20 @@
+name: posty
+description: Lightweight in-app API client for Flutter — test REST endpoints without leaving your app.
+version: 0.1.0
+homepage: https://github.com/YOUR_ORG/posty
+
+environment:
+  sdk: ^3.6.0
+  flutter: ">=3.16.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  dio: ^5.8.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:

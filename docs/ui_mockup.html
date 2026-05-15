@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Posty UI Mockup</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #13141a;
+      color: #e8e9ed;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: #1e1f26;
+      border-bottom: 1px solid #2e3038;
+    }
+    .topbar h1 { font-size: 18px; font-weight: 600; }
+    .chip {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      background: #25262e;
+      border: 1px solid #2e3038;
+      color: #9da3ae;
+    }
+    .main { flex: 1; display: flex; min-height: 0; }
+    .panel {
+      flex: 1;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-width: 0;
+    }
+    .panel-left { background: #1e1f26; border-right: 1px solid #2e3038; }
+    .panel-right { background: #1a1b22; }
+    .request-row { display: flex; gap: 8px; align-items: flex-start; }
+    select, input {
+      background: #25262e;
+      border: 1px solid #2e3038;
+      border-radius: 6px;
+      color: #e8e9ed;
+      padding: 10px;
+      font-size: 13px;
+    }
+    select { width: 100px; }
+    .btn-send {
+      background: #7c5cff;
+      border: none;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .tabs { display: flex; gap: 4px; border-bottom: 1px solid #2e3038; }
+    .tab { padding: 10px 14px; font-size: 13px; color: #9da3ae; }
+    .tab.active { color: #e8e9ed; font-weight: 600; border-bottom: 2px solid #7c5cff; }
+    .url-preview {
+      background: #25262e;
+      border: 1px solid #2e3038;
+      border-radius: 6px;
+      padding: 10px;
+      font-size: 12px;
+      color: #9da3ae;
+      word-break: break-all;
+    }
+    .kv-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+    .kv-row input { flex: 1; }
+    .status { display: flex; gap: 12px; align-items: center; font-size: 13px; }
+    .pill-ok {
+      background: rgba(61, 220, 132, 0.15);
+      border: 1px solid rgba(61, 220, 132, 0.5);
+      color: #3ddc84;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    .code {
+      flex: 1;
+      background: #16171d;
+      border: 1px solid #2e3038;
+      border-radius: 6px;
+      padding: 12px;
+      font-family: Menlo, monospace;
+      font-size: 12px;
+      line-height: 1.45;
+      overflow: auto;
+      color: #c9d1d9;
+    }
+    .grow { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <h1>Posty</h1>
+    <span class="chip">testapp.barionsystems.com</span>
+  </header>
+  <div class="main">
+    <section class="panel panel-left">
+      <div class="request-row">
+        <select><option>GET</option></select>
+        <input style="flex:2" value="https://testapp.barionsystems.com" />
+        <input style="flex:3" value="/connector/api/admin/products/134/stock-history" />
+        <button class="btn-send">Send</button>
+      </div>
+      <nav class="tabs">
+        <span class="tab active">Params (4)</span>
+        <span class="tab">Body</span>
+        <span class="tab">Auth</span>
+        <span class="tab">Headers (4)</span>
+      </nav>
+      <div class="grow">
+        <p style="font-size:11px;color:#9da3ae;margin-bottom:4px">URL PREVIEW</p>
+        <div class="url-preview">https://testapp.barionsystems.com/connector/api/admin/products/134/stock-history?variation_id=135</div>
+        <div style="margin-top:12px">
+          <div class="kv-row"><input type="checkbox" checked /><input value="variation_id" /><input value="135" /></div>
+          <div class="kv-row"><input type="checkbox" checked /><input value="page" /><input value="1" /></div>
+        </div>
+      </div>
+    </section>
+    <section class="panel panel-right">
+      <div class="status">
+        <span class="pill-ok">200 OK</span>
+        <span style="color:#9da3ae">348 ms</span>
+        <span style="color:#9da3ae">2.0 KB</span>
+      </div>
+      <nav class="tabs">
+        <span class="tab active">Preview</span>
+        <span class="tab">Headers (9)</span>
+      </nav>
+      <pre class="code">{
+  "success": true,
+  "msg": "messages.data_loaded_success",
+  "data": []
+}</pre>
+    </section>
+  </div>
+</body>
+</html>
