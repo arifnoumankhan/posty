@@ -29,6 +29,8 @@ class KeyValueEditor extends StatefulWidget {
 class _KeyValueEditorState extends State<KeyValueEditor> {
   final List<TextEditingController> _keyControllers = [];
   final List<TextEditingController> _valueControllers = [];
+  final List<FocusNode> _keyFocusNodes = [];
+  final List<FocusNode> _valueFocusNodes = [];
 
   @override
   void initState() {
@@ -41,14 +43,18 @@ class _KeyValueEditorState extends State<KeyValueEditor> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.rows.length != widget.rows.length) {
       _syncControllers();
-    } else {
-      for (var i = 0; i < widget.rows.length; i++) {
-        if (_keyControllers[i].text != widget.rows[i].key) {
-          _keyControllers[i].text = widget.rows[i].key;
-        }
-        if (_valueControllers[i].text != widget.rows[i].value) {
-          _valueControllers[i].text = widget.rows[i].value;
-        }
+      return;
+    }
+    final anyFocused =
+        _keyFocusNodes.any((n) => n.hasFocus) ||
+        _valueFocusNodes.any((n) => n.hasFocus);
+    if (anyFocused) return;
+    for (var i = 0; i < widget.rows.length; i++) {
+      if (_keyControllers[i].text != widget.rows[i].key) {
+        _keyControllers[i].text = widget.rows[i].key;
+      }
+      if (_valueControllers[i].text != widget.rows[i].value) {
+        _valueControllers[i].text = widget.rows[i].value;
       }
     }
   }
@@ -60,11 +66,21 @@ class _KeyValueEditorState extends State<KeyValueEditor> {
     for (final c in _valueControllers) {
       c.dispose();
     }
+    for (final n in _keyFocusNodes) {
+      n.dispose();
+    }
+    for (final n in _valueFocusNodes) {
+      n.dispose();
+    }
     _keyControllers.clear();
     _valueControllers.clear();
+    _keyFocusNodes.clear();
+    _valueFocusNodes.clear();
     for (final row in widget.rows) {
       _keyControllers.add(TextEditingController(text: row.key));
       _valueControllers.add(TextEditingController(text: row.value));
+      _keyFocusNodes.add(FocusNode());
+      _valueFocusNodes.add(FocusNode());
     }
   }
 
@@ -75,6 +91,12 @@ class _KeyValueEditorState extends State<KeyValueEditor> {
     }
     for (final c in _valueControllers) {
       c.dispose();
+    }
+    for (final n in _keyFocusNodes) {
+      n.dispose();
+    }
+    for (final n in _valueFocusNodes) {
+      n.dispose();
     }
     super.dispose();
   }
@@ -130,6 +152,7 @@ class _KeyValueEditorState extends State<KeyValueEditor> {
                 Expanded(
                   child: TextField(
                     controller: _keyControllers[index],
+                    focusNode: _keyFocusNodes[index],
                     onChanged: (v) => widget.onChanged(index, key: v),
                     style: TextStyle(color: theme.textPrimary, fontSize: 13),
                     decoration: const InputDecoration(hintText: 'key'),
@@ -139,6 +162,7 @@ class _KeyValueEditorState extends State<KeyValueEditor> {
                 Expanded(
                   child: TextField(
                     controller: _valueControllers[index],
+                    focusNode: _valueFocusNodes[index],
                     onChanged: (v) => widget.onChanged(index, value: v),
                     style: TextStyle(color: theme.textPrimary, fontSize: 13),
                     decoration: const InputDecoration(hintText: 'value'),

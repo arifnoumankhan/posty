@@ -47,7 +47,6 @@ class _PostyScreenState extends State<PostyScreen> {
   }
 
   void _onControllerUpdate() {
-    if (mounted) setState(() {});
     if (!_controller.isLoading &&
         _controller.lastResponse != null &&
         widget.onRequestSent != null) {
@@ -83,18 +82,23 @@ class _PostyScreenState extends State<PostyScreen> {
           elevation: 0,
           title: const Text('Posty'),
           actions: [
-            if (_controller.baseUrl.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Chip(
-                  label: Text(
-                    Uri.tryParse(_controller.baseUrl)?.host ?? 'API',
-                    style: TextStyle(color: _theme.textSecondary, fontSize: 12),
+            ListenableBuilder(
+              listenable: _controller,
+              builder: (context, _) {
+                if (_controller.baseUrl.isEmpty) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Chip(
+                    label: Text(
+                      Uri.tryParse(_controller.baseUrl)?.host ?? 'API',
+                      style: TextStyle(color: _theme.textSecondary, fontSize: 12),
+                    ),
+                    backgroundColor: _theme.inputFill,
+                    side: BorderSide(color: _theme.borderColor),
                   ),
-                  backgroundColor: _theme.inputFill,
-                  side: BorderSide(color: _theme.borderColor),
-                ),
-              ),
+                );
+              },
+            ),
             IconButton(
               icon: Icon(_useDark ? Icons.light_mode : Icons.dark_mode),
               onPressed: _toggleTheme,
@@ -162,15 +166,18 @@ class _PostyScreenState extends State<PostyScreen> {
     return Container(
       color: _theme.panelBackground,
       padding: const EdgeInsets.all(12),
-      child: ResponsePanel(
-        controller: _controller,
-        theme: _theme,
-        onCopyBody: () {
-          final body = _controller.formattedResponseBody;
-          if (body.isNotEmpty) {
-            copyToClipboard(context, body, message: 'Response copied');
-          }
-        },
+      child: ListenableBuilder(
+        listenable: _controller,
+        builder: (context, _) => ResponsePanel(
+          controller: _controller,
+          theme: _theme,
+          onCopyBody: () {
+            final body = _controller.formattedResponseBody;
+            if (body.isNotEmpty) {
+              copyToClipboard(context, body, message: 'Response copied');
+            }
+          },
+        ),
       ),
     );
   }

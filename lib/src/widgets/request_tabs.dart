@@ -20,16 +20,19 @@ class RequestTabs extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _TabBar(
-          theme: theme,
-          index: controller.requestTabIndex,
-          tabs: [
-            _TabSpec('Params', controller.enabledQueryCount),
-            const _TabSpec('Body', null),
-            _TabSpec('Auth', controller.authType == AuthType.none ? null : 1),
-            _TabSpec('Headers', controller.enabledHeaderCount),
-          ],
-          onTap: controller.setRequestTab,
+        ListenableBuilder(
+          listenable: controller,
+          builder: (context, _) => _TabBar(
+            theme: theme,
+            index: controller.requestTabIndex,
+            tabs: [
+              _TabSpec('Params', controller.enabledQueryCount),
+              const _TabSpec('Body', null),
+              _TabSpec('Auth', controller.authType == AuthType.none ? null : 1),
+              _TabSpec('Headers', controller.enabledHeaderCount),
+            ],
+            onTap: controller.setRequestTab,
+          ),
         ),
         const SizedBox(height: 8),
         Expanded(child: _buildTabContent(context)),
@@ -121,28 +124,34 @@ class _ParamsTab extends StatelessWidget {
       children: [
         Text('URL PREVIEW', style: TextStyle(color: theme.textSecondary, fontSize: 11)),
         const SizedBox(height: 4),
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: theme.inputFill,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: theme.borderColor),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: SelectableText(
-                  controller.previewUrl,
-                  style: TextStyle(color: theme.textPrimary, fontSize: 12),
-                ),
+        ListenableBuilder(
+          listenable: controller,
+          builder: (context, _) {
+            final previewUrl = controller.previewUrl;
+            return Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: theme.inputFill,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: theme.borderColor),
               ),
-              IconButton(
-                icon: Icon(Icons.copy, size: 18, color: theme.textSecondary),
-                onPressed: () => _copy(context, controller.previewUrl),
-                tooltip: 'Copy URL',
+              child: Row(
+                children: [
+                  Expanded(
+                    child: SelectableText(
+                      previewUrl,
+                      style: TextStyle(color: theme.textPrimary, fontSize: 12),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.copy, size: 18, color: theme.textSecondary),
+                    onPressed: () => _copy(context, previewUrl),
+                    tooltip: 'Copy URL',
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         ),
         const SizedBox(height: 12),
         KeyValueEditor(
@@ -196,24 +205,27 @@ class _BodyTab extends StatefulWidget {
 
 class _BodyTabState extends State<_BodyTab> {
   late final TextEditingController _jsonController;
+  late final FocusNode _jsonFocus;
 
   @override
   void initState() {
     super.initState();
     _jsonController = TextEditingController(text: widget.controller.jsonBody);
+    _jsonFocus = FocusNode();
+    widget.controller.addListener(_onControllerChanged);
   }
 
-  @override
-  void didUpdateWidget(_BodyTab oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (_jsonController.text != widget.controller.jsonBody &&
-        !(_jsonController.selection.isValid && _jsonController.selection.isCollapsed == false)) {
+  void _onControllerChanged() {
+    if (_jsonFocus.hasFocus) return;
+    if (_jsonController.text != widget.controller.jsonBody) {
       _jsonController.text = widget.controller.jsonBody;
     }
   }
 
   @override
   void dispose() {
+    widget.controller.removeListener(_onControllerChanged);
+    _jsonFocus.dispose();
     _jsonController.dispose();
     super.dispose();
   }
@@ -247,6 +259,7 @@ class _BodyTabState extends State<_BodyTab> {
           ),
           TextField(
             controller: _jsonController,
+            focusNode: _jsonFocus,
             onChanged: c.setJsonBody,
             maxLines: 12,
             style: TextStyle(
@@ -288,11 +301,16 @@ class _AuthTab extends StatefulWidget {
 }
 
 class _AuthTabState extends State<_AuthTab> {
-  late TextEditingController _bearer;
-  late TextEditingController _user;
-  late TextEditingController _pass;
-  late TextEditingController _apiHeader;
-  late TextEditingController _apiValue;
+  late final TextEditingController _bearer;
+  late final TextEditingController _user;
+  late final TextEditingController _pass;
+  late final TextEditingController _apiHeader;
+  late final TextEditingController _apiValue;
+  late final FocusNode _bearerFocus;
+  late final FocusNode _userFocus;
+  late final FocusNode _passFocus;
+  late final FocusNode _apiHeaderFocus;
+  late final FocusNode _apiValueFocus;
 
   @override
   void initState() {
@@ -303,70 +321,110 @@ class _AuthTabState extends State<_AuthTab> {
     _pass = TextEditingController(text: c.basicPassword);
     _apiHeader = TextEditingController(text: c.apiKeyHeader);
     _apiValue = TextEditingController(text: c.apiKeyValue);
+    _bearerFocus = FocusNode();
+    _userFocus = FocusNode();
+    _passFocus = FocusNode();
+    _apiHeaderFocus = FocusNode();
+    _apiValueFocus = FocusNode();
+    widget.controller.addListener(_syncFromController);
+  }
+
+  void _syncFromController() {
+    final c = widget.controller;
+    if (!_bearerFocus.hasFocus && _bearer.text != c.bearerToken) {
+      _bearer.text = c.bearerToken;
+    }
+    if (!_userFocus.hasFocus && _user.text != c.basicUsername) {
+      _user.text = c.basicUsername;
+    }
+    if (!_passFocus.hasFocus && _pass.text != c.basicPassword) {
+      _pass.text = c.basicPassword;
+    }
+    if (!_apiHeaderFocus.hasFocus && _apiHeader.text != c.apiKeyHeader) {
+      _apiHeader.text = c.apiKeyHeader;
+    }
+    if (!_apiValueFocus.hasFocus && _apiValue.text != c.apiKeyValue) {
+      _apiValue.text = c.apiKeyValue;
+    }
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    widget.controller.removeListener(_syncFromController);
     _bearer.dispose();
     _user.dispose();
     _pass.dispose();
     _apiHeader.dispose();
     _apiValue.dispose();
+    _bearerFocus.dispose();
+    _userFocus.dispose();
+    _passFocus.dispose();
+    _apiHeaderFocus.dispose();
+    _apiValueFocus.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final c = widget.controller;
-    return ListView(
-      children: [
-        DropdownButtonFormField<AuthType>(
-          initialValue: c.authType,
-          decoration: const InputDecoration(labelText: 'Auth type'),
-          items: AuthType.values
-              .map((t) => DropdownMenuItem(value: t, child: Text(t.name)))
-              .toList(),
-          onChanged: (v) {
-            if (v != null) c.setAuthType(v);
-          },
-        ),
-        const SizedBox(height: 12),
-        if (c.authType == AuthType.bearer)
-          TextField(
-            controller: _bearer,
-            decoration: const InputDecoration(labelText: 'Bearer token'),
-            obscureText: true,
-            onChanged: c.setBearerToken,
+    return ListenableBuilder(
+      listenable: c,
+      builder: (context, _) => ListView(
+        children: [
+          DropdownButtonFormField<AuthType>(
+            initialValue: c.authType,
+            decoration: const InputDecoration(labelText: 'Auth type'),
+            items: AuthType.values
+                .map((t) => DropdownMenuItem(value: t, child: Text(t.name)))
+                .toList(),
+            onChanged: (v) {
+              if (v != null) c.setAuthType(v);
+            },
           ),
-        if (c.authType == AuthType.basic) ...[
-          TextField(
-            controller: _user,
-            decoration: const InputDecoration(labelText: 'Username'),
-            onChanged: c.setBasicUsername,
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _pass,
-            decoration: const InputDecoration(labelText: 'Password'),
-            obscureText: true,
-            onChanged: c.setBasicPassword,
-          ),
+          const SizedBox(height: 12),
+          if (c.authType == AuthType.bearer)
+            TextField(
+              controller: _bearer,
+              focusNode: _bearerFocus,
+              decoration: const InputDecoration(labelText: 'Bearer token'),
+              obscureText: true,
+              onChanged: c.setBearerToken,
+            ),
+          if (c.authType == AuthType.basic) ...[
+            TextField(
+              controller: _user,
+              focusNode: _userFocus,
+              decoration: const InputDecoration(labelText: 'Username'),
+              onChanged: c.setBasicUsername,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _pass,
+              focusNode: _passFocus,
+              decoration: const InputDecoration(labelText: 'Password'),
+              obscureText: true,
+              onChanged: c.setBasicPassword,
+            ),
+          ],
+          if (c.authType == AuthType.apiKey) ...[
+            TextField(
+              controller: _apiHeader,
+              focusNode: _apiHeaderFocus,
+              decoration: const InputDecoration(labelText: 'Header name'),
+              onChanged: c.setApiKeyHeader,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _apiValue,
+              focusNode: _apiValueFocus,
+              decoration: const InputDecoration(labelText: 'API key value'),
+              obscureText: true,
+              onChanged: c.setApiKeyValue,
+            ),
+          ],
         ],
-        if (c.authType == AuthType.apiKey) ...[
-          TextField(
-            controller: _apiHeader,
-            decoration: const InputDecoration(labelText: 'Header name'),
-            onChanged: c.setApiKeyHeader,
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _apiValue,
-            decoration: const InputDecoration(labelText: 'API key value'),
-            obscureText: true,
-            onChanged: c.setApiKeyValue,
-          ),
-        ],
-      ],
+      ),
     );
   }
 }

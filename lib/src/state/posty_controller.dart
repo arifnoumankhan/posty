@@ -81,12 +81,10 @@ class PostyController extends ChangeNotifier {
 
   void setBaseUrl(String value) {
     baseUrl = value;
-    notifyListeners();
   }
 
   void setPath(String value) {
     path = value;
-    notifyListeners();
   }
 
   void setRequestTab(int index) {
@@ -106,7 +104,6 @@ class PostyController extends ChangeNotifier {
 
   void setJsonBody(String value) {
     jsonBody = value;
-    notifyListeners();
   }
 
   void formatJsonBody() {
@@ -121,27 +118,22 @@ class PostyController extends ChangeNotifier {
 
   void setBearerToken(String value) {
     bearerToken = value;
-    notifyListeners();
   }
 
   void setBasicUsername(String value) {
     basicUsername = value;
-    notifyListeners();
   }
 
   void setBasicPassword(String value) {
     basicPassword = value;
-    notifyListeners();
   }
 
   void setApiKeyHeader(String value) {
     apiKeyHeader = value;
-    notifyListeners();
   }
 
   void setApiKeyValue(String value) {
     apiKeyValue = value;
-    notifyListeners();
   }
 
   void updateQueryParam(int index, {String? key, String? value, bool? enabled}) {
@@ -151,7 +143,7 @@ class PostyController extends ChangeNotifier {
       value: value,
       enabled: enabled,
     );
-    notifyListeners();
+    if (enabled != null) notifyListeners();
   }
 
   void addQueryParam() {
@@ -191,7 +183,7 @@ class PostyController extends ChangeNotifier {
       value: value,
       enabled: enabled,
     );
-    notifyListeners();
+    if (enabled != null) notifyListeners();
   }
 
   void addHeader() {
@@ -227,7 +219,7 @@ class PostyController extends ChangeNotifier {
       value: value,
       enabled: enabled,
     );
-    notifyListeners();
+    if (enabled != null) notifyListeners();
   }
 
   void addFormBodyRow() {
