@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:posty/src/models/key_value_row.dart';
 import 'package:posty/src/models/posty_enums.dart';
 import 'package:posty/src/models/posty_request.dart';
@@ -35,12 +36,15 @@ class PostyHttpService {
       );
 
       dynamic data;
-      if (request.bodyType == BodyType.json && request.jsonBody.trim().isNotEmpty) {
+      if (request.bodyType == BodyType.json &&
+          request.jsonBody.trim().isNotEmpty) {
         data = request.jsonBody;
         headers.putIfAbsent('Content-Type', () => 'application/json');
       } else if (request.bodyType == BodyType.form) {
-        data = _formMap(request.formBody);
-        headers.putIfAbsent('Content-Type', () => 'application/x-www-form-urlencoded');
+        final formData = await _buildFormData(request.formBody);
+        if (formData != null) {
+          data = formData;
+        }
       }
 
       final response = await _dio.request<String>(
@@ -126,12 +130,48 @@ class PostyHttpService {
     return map;
   }
 
-  Map<String, String> _formMap(List<KeyValueRow> rows) {
-    final map = <String, String>{};
+  Future<FormData?> _buildFormData(List<KeyValueRow> rows) async {
+    final fields = <MapEntry<String, String>>[];
+    final files = <MapEntry<String, MultipartFile>>[];
+
     for (final row in rows) {
       if (!row.enabled || row.key.trim().isEmpty) continue;
-      map[row.key.trim()] = row.value;
+      final name = row.key.trim();
+
+      if (row.formValueType == FormValueType.file && row.hasFile) {
+        final file = await _multipartFromRow(row);
+        if (file != null) {
+          files.add(MapEntry(name, file));
+        }
+      } else if (row.value.isNotEmpty) {
+        fields.add(MapEntry(name, row.value));
+      }
     }
-    return map;
+
+    if (fields.isEmpty && files.isEmpty) return null;
+
+    final formData = FormData();
+    formData.fields.addAll(fields);
+    formData.files.addAll(files);
+    return formData;
+  }
+
+  Future<MultipartFile?> _multipartFromRow(KeyValueRow row) async {
+    final filename =
+        row.fileName ?? row.filePath?.split(RegExp(r'[/\\]')).last ?? 'file';
+
+    if (row.fileBytes != null && row.fileBytes!.isNotEmpty) {
+      return MultipartFile.fromBytes(row.fileBytes!, filename: filename);
+    }
+
+    if (kIsWeb || row.filePath == null || row.filePath!.isEmpty) {
+      return null;
+    }
+
+    try {
+      return await MultipartFile.fromFile(row.filePath!, filename: filename);
+    } catch (_) {
+      return null;
+    }
   }
 }

@@ -16,6 +16,12 @@ enum BodyType {
   form,
 }
 
+/// Form body field value kind (multipart).
+enum FormValueType {
+  text,
+  file,
+}
+
 enum AuthType {
   none,
   bearer,

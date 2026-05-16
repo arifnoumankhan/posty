@@ -8,11 +8,13 @@ class PostyPanel extends StatelessWidget {
     required this.height,
     this.initialBaseUrl = '',
     this.initialHeaders,
+    this.initialQuicktypeConverterUrl = '',
     this.onRequestSent,
   });
 
   final double height;
   final String initialBaseUrl;
+  final String initialQuicktypeConverterUrl;
   final Map<String, String>? initialHeaders;
   final void Function()? onRequestSent;
 
@@ -25,6 +27,7 @@ class PostyPanel extends StatelessWidget {
         child: PostyScreen(
           initialBaseUrl: initialBaseUrl,
           initialHeaders: initialHeaders,
+          initialQuicktypeConverterUrl: initialQuicktypeConverterUrl,
           onRequestSent: onRequestSent != null ? (_) => onRequestSent!() : null,
         ),
       ),

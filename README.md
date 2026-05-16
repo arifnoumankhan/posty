@@ -4,16 +4,19 @@ Lightweight in-app REST API client for Flutter. Test endpoints without leaving y
 
 ## Features
 
-- Base URL + path, HTTP method selector, **Send** / **Cancel**
-- **Params** tab with URL preview, query key/value rows, import from URL
-- **Body** tab: None, JSON (with format), form-urlencoded
-- **Auth** tab: Bearer, Basic, API Key
-- **Headers** tab with presets
-- **Response** panel: status, timing, size, pretty JSON preview, copy body, response headers
-- Dark/light theme
-- Responsive split layout (side-by-side on wide screens)
+- **Request bar** — base URL, HTTP method, endpoint path, **Send** / **Cancel**, live URL sync
+- **Params** — query key/value rows, import from URL, URL preview
+- **Body** — none, JSON (with format), multipart form (text fields + file upload)
+- **Auth** — Bearer, Basic, API Key
+- **Headers** — editable rows with presets
+- **Response** — status, timing, size; preview & headers tabs; pretty JSON and copy
+- **Convert to JSON** — embedded [quicktype](https://app.quicktype.io/) WebView tab
+- **Layout** — draggable horizontal/vertical split; dark/light theme; optional history drawer
+- **Host integration** — open in-app, new desktop window, or new browser tab (`PostyLauncher`, `PostyBootstrap`)
 
-## Install via Git
+## Install
+
+### Git (recommended)
 
 ```yaml
 dependencies:
@@ -23,7 +26,73 @@ dependencies:
       ref: main
 ```
 
-## Run the demo app
+### Path (local development)
+
+```yaml
+dependencies:
+  posty:
+    path: ../posty
+```
+
+## Quick start
+
+### Full screen
+
+```dart
+import 'package:posty/posty.dart';
+
+PostyScreen(
+  initialBaseUrl: 'https://api.example.com',
+  initialHeaders: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
+  initialQuicktypeConverterUrl: PostyDefaults.quicktypeConverterUrl,
+  showHistoryDrawer: true,
+)
+```
+
+### Embedded panel
+
+```dart
+PostyPanel(
+  height: 600,
+  initialBaseUrl: 'https://api.example.com',
+  initialHeaders: {'Accept': 'application/json'},
+)
+```
+
+### Open from a menu (new window / tab / in-app)
+
+```dart
+await PostyLauncher.open(
+  context,
+  PostyLaunchRequest(
+    openInNewWindow: true, // desktop & web default when supported
+    onOpenInApp: (ctx) => ctx.pushNamed('posty_api_screen'),
+    webHashRoute: 'posty_api_screen', // Flutter web: opens origin/#/posty_api_screen
+  ),
+);
+```
+
+### Secondary desktop window in `main()`
+
+```dart
+void main(List<String> args) async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  if (await PostyBootstrap.runSecondaryWindowIfNeeded(
+    args,
+    home: (_) => const MyPostyScreen(),
+    appTitle: 'My App · Posty',
+  )) {
+    return;
+  }
+
+  runApp(const MyApp());
+}
+```
+
+Use `PostyWindowIds.defaultDisplayId` and `PostyWindowIds.screenType` when creating windows with `WindowManagerPlus`, or call `PostyDesktopWindow.open()`.
+
+## Example app
 
 ```bash
 cd example
@@ -33,52 +102,28 @@ flutter run
 
 The example persists **base URL** and the last **20 requests** using `shared_preferences`.
 
-## Usage in your app
-
-### Full screen
+## Programmatic API
 
 ```dart
-import 'package:posty/posty.dart';
-
-Navigator.push(
-  context,
-  MaterialPageRoute(
-    builder: (_) => PostyScreen(
-      initialBaseUrl: 'https://api.example.com',
-      initialHeaders: {'Accept': 'application/json'},
-    ),
-  ),
+final controller = PostyController(
+  initialBaseUrl: 'https://httpbin.org',
+  initialHeaders: {'Accept': 'application/json'},
 );
-```
-
-### Embedded panel
-
-```dart
-PostyPanel(
-  height: 600,
-  initialBaseUrl: 'https://api.example.com',
-)
-```
-
-### Programmatic request / response
-
-```dart
-final controller = PostyController(initialBaseUrl: 'https://httpbin.org');
 await controller.send();
 final response = controller.lastResponse;
 ```
 
 ## UI mockup
 
-Open [`docs/ui_mockup.html`](docs/ui_mockup.html) in a browser for a static layout preview (dark Insomnia-style split view).
-
-## Barioo integration (phase 2)
-
-Add a dev-menu entry that opens `PostyScreen` with your staging base URL and optional auth header from the logged-in session.
+Open [`docs/ui_mockup.html`](docs/ui_mockup.html) for a static layout preview (dark Insomnia-style split view).
 
 ## Web note
 
-Browser builds are subject to **CORS**. The example app works best on mobile/desktop for arbitrary APIs.
+Browser builds are subject to **CORS**. Mobile and desktop targets work best for arbitrary APIs. For a new tab on web, pass `webUrl` or `webHashRoute` on `PostyLaunchRequest`.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 

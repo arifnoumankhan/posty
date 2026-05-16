@@ -11,6 +11,14 @@ void main() {
     expect(url, 'https://api.example.com/v1/users');
   });
 
+  test('buildUrl joins base path prefix and endpoint', () {
+    final url = UrlBuilder.buildUrl(
+      baseUrl: 'https://testapp.barionsystems.com/connector',
+      path: '/api',
+    );
+    expect(url, 'https://testapp.barionsystems.com/connector/api');
+  });
+
   test('buildUrl appends query params', () {
     final url = UrlBuilder.buildUrl(
       baseUrl: 'https://api.example.com',

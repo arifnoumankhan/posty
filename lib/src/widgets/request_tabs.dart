@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:posty/src/models/posty_enums.dart';
 import 'package:posty/src/state/posty_controller.dart';
 import 'package:posty/src/theme/posty_theme.dart';
+import 'package:posty/src/widgets/form_body_editor.dart';
 import 'package:posty/src/widgets/key_value_editor.dart';
+import 'package:posty/src/widgets/posty_url_preview.dart';
 
 class RequestTabs extends StatelessWidget {
   const RequestTabs({
@@ -27,7 +28,7 @@ class RequestTabs extends StatelessWidget {
             index: controller.requestTabIndex,
             tabs: [
               _TabSpec('Params', controller.enabledQueryCount),
-              const _TabSpec('Body', null),
+              _TabSpec('Body', controller.bodyTabBadgeCount),
               _TabSpec('Auth', controller.authType == AuthType.none ? null : 1),
               _TabSpec('Headers', controller.enabledHeaderCount),
             ],
@@ -35,24 +36,22 @@ class RequestTabs extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        Expanded(child: _buildTabContent(context)),
+        Expanded(
+          child: ListenableBuilder(
+            listenable: controller,
+            builder: (context, _) => IndexedStack(
+              index: controller.requestTabIndex.clamp(0, 3),
+              children: [
+                _ParamsTab(controller: controller, theme: theme),
+                _BodyTab(controller: controller, theme: theme),
+                _AuthTab(controller: controller, theme: theme),
+                _HeadersTab(controller: controller, theme: theme),
+              ],
+            ),
+          ),
+        ),
       ],
     );
-  }
-
-  Widget _buildTabContent(BuildContext context) {
-    switch (controller.requestTabIndex) {
-      case 0:
-        return _ParamsTab(controller: controller, theme: theme);
-      case 1:
-        return _BodyTab(controller: controller, theme: theme);
-      case 2:
-        return _AuthTab(controller: controller, theme: theme);
-      case 3:
-        return _HeadersTab(controller: controller, theme: theme);
-      default:
-        return const SizedBox.shrink();
-    }
   }
 }
 
@@ -122,39 +121,18 @@ class _ParamsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       children: [
-        Text('URL PREVIEW', style: TextStyle(color: theme.textSecondary, fontSize: 11)),
-        const SizedBox(height: 4),
         ListenableBuilder(
           listenable: controller,
-          builder: (context, _) {
-            final previewUrl = controller.previewUrl;
-            return Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: theme.inputFill,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: theme.borderColor),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: SelectableText(
-                      previewUrl,
-                      style: TextStyle(color: theme.textPrimary, fontSize: 12),
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.copy, size: 18, color: theme.textSecondary),
-                    onPressed: () => _copy(context, previewUrl),
-                    tooltip: 'Copy URL',
-                  ),
-                ],
-              ),
-            );
-          },
+          builder: (context, _) => PostyUrlPreview(
+            key: ValueKey('params-${controller.previewUrl}'),
+            url: controller.previewUrl,
+            theme: theme,
+            label: 'URL preview',
+          ),
         ),
         const SizedBox(height: 12),
         KeyValueEditor(
+          key: ValueKey('query-${controller.queryParams.length}'),
           rows: controller.queryParams,
           theme: theme,
           onChanged: controller.updateQueryParam,
@@ -185,12 +163,6 @@ class _ParamsTab extends StatelessWidget {
     );
   }
 
-  void _copy(BuildContext context, String text) {
-    Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('URL copied'), duration: Duration(seconds: 2)),
-    );
-  }
 }
 
 class _BodyTab extends StatefulWidget {
@@ -234,58 +206,120 @@ class _BodyTabState extends State<_BodyTab> {
   Widget build(BuildContext context) {
     final theme = widget.theme;
     final c = widget.controller;
-    return ListView(
-      children: [
-        SegmentedButton<BodyType>(
-          segments: const [
-            ButtonSegment(value: BodyType.none, label: Text('None')),
-            ButtonSegment(value: BodyType.json, label: Text('JSON')),
-            ButtonSegment(value: BodyType.form, label: Text('Form')),
-          ],
-          selected: {c.bodyType},
-          onSelectionChanged: (s) => c.setBodyType(s.first),
-        ),
-        const SizedBox(height: 12),
-        if (c.bodyType == BodyType.json) ...[
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: () {
-                c.formatJsonBody();
-                _jsonController.text = c.jsonBody;
+    return ListenableBuilder(
+      listenable: c,
+      builder: (context, _) {
+        return ListView(
+          children: [
+            DropdownButtonFormField<BodyType>(
+              key: ValueKey('body-type-${c.bodyType.name}'),
+              initialValue: c.bodyType,
+              decoration: InputDecoration(
+                labelText: 'Body type',
+                labelStyle: TextStyle(color: theme.textSecondary),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(color: theme.borderColor),
+                ),
+              ),
+              dropdownColor: theme.inputFill,
+              style: TextStyle(color: theme.textPrimary, fontSize: 13),
+              items: const [
+                DropdownMenuItem(
+                  value: BodyType.none,
+                  child: Text('No body'),
+                ),
+                DropdownMenuItem(
+                  value: BodyType.json,
+                  child: Text('JSON'),
+                ),
+                DropdownMenuItem(
+                  value: BodyType.form,
+                  child: Text('Multipart form'),
+                ),
+              ],
+              onChanged: (value) {
+                if (value != null) c.setBodyType(value);
               },
-              child: const Text('Format JSON'),
             ),
-          ),
-          TextField(
-            controller: _jsonController,
-            focusNode: _jsonFocus,
-            onChanged: c.setJsonBody,
-            maxLines: 12,
-            style: TextStyle(
-              color: theme.textPrimary,
-              fontFamily: 'monospace',
-              fontSize: 13,
-            ),
-            decoration: const InputDecoration(
-              hintText: '{\n  "key": "value"\n}',
-              alignLabelWithHint: true,
-            ),
-          ),
-        ] else if (c.bodyType == BodyType.form)
-          KeyValueEditor(
-            rows: c.formBody,
-            theme: theme,
-            onChanged: c.updateFormBody,
-            onAdd: c.addFormBodyRow,
-            onRemove: c.removeFormBodyRow,
-          )
-        else
-          Text(
-            'No body for this request.',
-            style: TextStyle(color: theme.textSecondary),
-          ),
-      ],
+            const SizedBox(height: 16),
+            if (c.bodyType == BodyType.json) ...[
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () {
+                    c.formatJsonBody();
+                    _jsonController.text = c.jsonBody;
+                  },
+                  child: const Text('Format JSON'),
+                ),
+              ),
+              TextField(
+                controller: _jsonController,
+                focusNode: _jsonFocus,
+                onChanged: c.setJsonBody,
+                maxLines: null,
+                minLines: 12,
+                style: TextStyle(
+                  color: theme.textPrimary,
+                  fontFamily: 'monospace',
+                  fontSize: 13,
+                ),
+                decoration: const InputDecoration(
+                  hintText: '{\n  "key": "value"\n}',
+                  alignLabelWithHint: true,
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ] else if (c.bodyType == BodyType.form)
+              FormBodyEditor(
+                key: ValueKey('form-${c.formBody.length}'),
+                rows: c.formBody,
+                theme: theme,
+                onChanged: c.updateFormBody,
+                onAdd: c.addFormBodyRow,
+                onRemove: c.removeFormBodyRow,
+                toolbar: TextButton(
+                  onPressed: c.clearFormBody,
+                  style: TextButton.styleFrom(
+                    foregroundColor: theme.textSecondary,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text('Delete all', style: TextStyle(fontSize: 12)),
+                ),
+              )
+            else
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 48),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.http_outlined,
+                        size: 48,
+                        color: theme.textSecondary.withValues(alpha: 0.5),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'No body for this request',
+                        style: TextStyle(color: theme.textSecondary),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Select JSON or Multipart form in the dropdown above',
+                        style: TextStyle(
+                          color: theme.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
@@ -438,6 +472,7 @@ class _HeadersTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return KeyValueEditor(
+      key: ValueKey('headers-${controller.headers.length}'),
       rows: controller.headers,
       theme: theme,
       onChanged: controller.updateHeader,

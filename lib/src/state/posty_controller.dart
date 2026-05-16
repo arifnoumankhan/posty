@@ -3,6 +3,7 @@ import 'package:posty/src/models/key_value_row.dart';
 import 'package:posty/src/models/posty_enums.dart';
 import 'package:posty/src/models/posty_request.dart';
 import 'package:posty/src/models/posty_response.dart';
+import 'package:posty/src/posty_defaults.dart';
 import 'package:posty/src/services/posty_http_service.dart';
 import 'package:posty/src/utils/json_pretty.dart';
 import 'package:posty/src/utils/url_builder.dart';
@@ -11,8 +12,11 @@ class PostyController extends ChangeNotifier {
   PostyController({
     String initialBaseUrl = '',
     Map<String, String>? initialHeaders,
+    String initialQuicktypeConverterUrl = '',
     PostyHttpService? httpService,
   }) : _http = httpService ?? PostyHttpService() {
+    quicktypeConverterUrl =
+        PostyDefaults.normalizeQuicktypeConverterUrl(initialQuicktypeConverterUrl);
     baseUrl = initialBaseUrl;
     if (initialHeaders != null && initialHeaders.isNotEmpty) {
       headers = initialHeaders.entries
@@ -45,6 +49,12 @@ class PostyController extends ChangeNotifier {
   int requestTabIndex = 0;
   DateTime? lastSentAt;
 
+  /// Embedded JSON→model converter URL (default quicktype). Commit via [setQuicktypeConverterUrl].
+  String quicktypeConverterUrl = PostyDefaults.quicktypeConverterUrl;
+
+  /// Registered by [RequestBar] to flush text fields before tab changes / preview refresh.
+  void Function()? urlCommitHandler;
+
   String get previewUrl => UrlBuilder.buildUrl(
         baseUrl: baseUrl,
         path: path,
@@ -61,6 +71,21 @@ class PostyController extends ChangeNotifier {
 
   int get enabledHeaderCount =>
       headers.where((r) => r.enabled && r.key.trim().isNotEmpty).length;
+
+  int get enabledFormBodyCount => formBody
+      .where((r) => r.enabled && r.key.trim().isNotEmpty)
+      .length;
+
+  int get bodyTabBadgeCount {
+    switch (bodyType) {
+      case BodyType.none:
+        return 0;
+      case BodyType.json:
+        return jsonBody.trim().isEmpty ? 0 : 1;
+      case BodyType.form:
+        return enabledFormBodyCount;
+    }
+  }
 
   void _ensureDefaultRows() {
     if (queryParams.isEmpty) {
@@ -79,21 +104,59 @@ class PostyController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Updates base URL and refreshes [previewUrl] in the UI (every keystroke).
   void setBaseUrl(String value) {
     baseUrl = value;
+    notifyListeners();
   }
 
+  /// Updates endpoint path and refreshes [previewUrl] in the UI (every keystroke).
   void setPath(String value) {
     path = value;
+    notifyListeners();
+  }
+
+  /// Trims URL fields (call when a URL text field loses focus).
+  void commitBaseUrl() {
+    final trimmed = baseUrl.trim();
+    if (baseUrl != trimmed) {
+      baseUrl = trimmed;
+      notifyListeners();
+    }
+  }
+
+  void commitPath() {
+    final trimmed = path.trim();
+    if (path != trimmed) {
+      path = trimmed;
+      notifyListeners();
+    }
+  }
+
+  /// Trims both fields (before send or when leaving URL inputs).
+  void commitRequestUrl() {
+    final trimmedBase = baseUrl.trim();
+    final trimmedPath = path.trim();
+    if (baseUrl != trimmedBase || path != trimmedPath) {
+      baseUrl = trimmedBase;
+      path = trimmedPath;
+      notifyListeners();
+    }
   }
 
   void setRequestTab(int index) {
+    urlCommitHandler?.call();
     requestTabIndex = index;
     notifyListeners();
   }
 
   void setResponseTab(int index) {
     responseTabIndex = index;
+    notifyListeners();
+  }
+
+  void setQuicktypeConverterUrl(String url) {
+    quicktypeConverterUrl = PostyDefaults.normalizeQuicktypeConverterUrl(url);
     notifyListeners();
   }
 
@@ -143,7 +206,7 @@ class PostyController extends ChangeNotifier {
       value: value,
       enabled: enabled,
     );
-    if (enabled != null) notifyListeners();
+    notifyListeners();
   }
 
   void addQueryParam() {
@@ -183,7 +246,7 @@ class PostyController extends ChangeNotifier {
       value: value,
       enabled: enabled,
     );
-    if (enabled != null) notifyListeners();
+    notifyListeners();
   }
 
   void addHeader() {
@@ -212,14 +275,34 @@ class PostyController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void updateFormBody(int index, {String? key, String? value, bool? enabled}) {
+  void updateFormBody(
+    int index, {
+    String? key,
+    String? value,
+    bool? enabled,
+    FormValueType? formValueType,
+    String? filePath,
+    String? fileName,
+    List<int>? fileBytes,
+    bool clearFile = false,
+  }) {
     if (index < 0 || index >= formBody.length) return;
     formBody[index] = formBody[index].copyWith(
       key: key,
       value: value,
       enabled: enabled,
+      formValueType: formValueType,
+      filePath: filePath,
+      fileName: fileName,
+      fileBytes: fileBytes != null ? Uint8List.fromList(fileBytes) : null,
+      clearFile: clearFile,
     );
-    if (enabled != null) notifyListeners();
+    notifyListeners();
+  }
+
+  void clearFormBody() {
+    formBody = [const KeyValueRow()];
+    notifyListeners();
   }
 
   void addFormBodyRow() {

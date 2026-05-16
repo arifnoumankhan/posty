@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:posty/src/models/posty_response.dart';
 import 'package:posty/src/state/posty_controller.dart';
 import 'package:posty/src/theme/posty_theme.dart';
+import 'package:posty/src/widgets/quicktype_converter_tab.dart';
 
 class ResponsePanel extends StatelessWidget {
   const ResponsePanel({
@@ -38,7 +39,14 @@ class ResponsePanel extends StatelessWidget {
                   isEmpty: response == null,
                   onCopy: onCopyBody,
                 )
-              : _HeadersTab(theme: theme, response: response),
+              : controller.responseTabIndex == 1
+                  ? _HeadersTab(theme: theme, response: response)
+                  : QuicktypeConverterTab(
+                      theme: theme,
+                      converterUrl: controller.quicktypeConverterUrl,
+                      onConverterUrlCommitted: controller.setQuicktypeConverterUrl,
+                      responseJsonForCopy: controller.formattedResponseBody,
+                    ),
         ),
       ],
     );
@@ -152,6 +160,7 @@ class _ResponseTabBar extends StatelessWidget {
       children: [
         _tab('Preview', 0),
         _tab('Headers ($headerCount)', 1),
+        _tab('Convert to JSON', 2),
       ],
     );
   }

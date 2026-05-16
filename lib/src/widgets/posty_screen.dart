@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:posty/src/state/posty_controller.dart';
 import 'package:posty/src/theme/posty_theme.dart';
+import 'package:posty/src/widgets/posty_split_view.dart';
 import 'package:posty/src/widgets/request_bar.dart';
 import 'package:posty/src/widgets/request_tabs.dart';
 import 'package:posty/src/widgets/response_panel.dart';
@@ -10,6 +11,7 @@ class PostyScreen extends StatefulWidget {
     super.key,
     this.initialBaseUrl = '',
     this.initialHeaders,
+    this.initialQuicktypeConverterUrl = '',
     this.controller,
     this.onRequestSent,
     this.showHistoryDrawer = false,
@@ -18,6 +20,7 @@ class PostyScreen extends StatefulWidget {
   });
 
   final String initialBaseUrl;
+  final String initialQuicktypeConverterUrl;
   final Map<String, String>? initialHeaders;
   final PostyController? controller;
   final void Function(PostyController controller)? onRequestSent;
@@ -41,6 +44,7 @@ class _PostyScreenState extends State<PostyScreen> {
         PostyController(
           initialBaseUrl: widget.initialBaseUrl,
           initialHeaders: widget.initialHeaders,
+          initialQuicktypeConverterUrl: widget.initialQuicktypeConverterUrl,
         );
     _theme = PostyTheme.dark();
     _controller.addListener(_onControllerUpdate);
@@ -119,20 +123,16 @@ class _PostyScreenState extends State<PostyScreen> {
           builder: (context, constraints) {
             final wide = constraints.maxWidth >= 900;
             if (wide) {
-              return Row(
-                children: [
-                  Expanded(child: _buildRequestPanel()),
-                  VerticalDivider(width: 1, color: _theme.borderColor),
-                  Expanded(child: _buildResponsePanel()),
-                ],
+              return PostyHorizontalSplitView(
+                theme: _theme,
+                start: _buildRequestPanel(),
+                end: _buildResponsePanel(),
               );
             }
-            return Column(
-              children: [
-                SizedBox(height: constraints.maxHeight * 0.48, child: _buildRequestPanel()),
-                Divider(height: 1, color: _theme.borderColor),
-                Expanded(child: _buildResponsePanel()),
-              ],
+            return PostyVerticalSplitView(
+              theme: _theme,
+              start: _buildRequestPanel(),
+              end: _buildResponsePanel(),
             );
           },
         ),
