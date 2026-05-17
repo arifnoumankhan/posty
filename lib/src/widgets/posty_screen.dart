@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:posty/src/state/posty_controller.dart';
 import 'package:posty/src/theme/posty_theme.dart';
+import 'package:posty/src/models/posty_environment.dart';
+import 'package:posty/src/widgets/posty_scope.dart';
+import 'package:posty/src/widgets/posty_sidebar.dart';
 import 'package:posty/src/widgets/posty_split_view.dart';
 import 'package:posty/src/widgets/request_bar.dart';
 import 'package:posty/src/widgets/request_tabs.dart';
 import 'package:posty/src/widgets/response_panel.dart';
+import 'package:posty/src/workspace/posty_workspace.dart';
 
 class PostyScreen extends StatefulWidget {
   const PostyScreen({
@@ -14,8 +18,13 @@ class PostyScreen extends StatefulWidget {
     this.initialQuicktypeConverterUrl = '',
     this.controller,
     this.onRequestSent,
+    this.enableLocalWorkspace = true,
+    this.persistenceId = 'posty',
+    @Deprecated('Use enableLocalWorkspace sidebar instead')
     this.showHistoryDrawer = false,
+    @Deprecated('Use enableLocalWorkspace sidebar instead')
     this.historyRequests,
+    @Deprecated('Use enableLocalWorkspace sidebar instead')
     this.onHistorySelected,
   });
 
@@ -24,6 +33,8 @@ class PostyScreen extends StatefulWidget {
   final Map<String, String>? initialHeaders;
   final PostyController? controller;
   final void Function(PostyController controller)? onRequestSent;
+  final bool enableLocalWorkspace;
+  final String persistenceId;
   final bool showHistoryDrawer;
   final List<String>? historyRequests;
   final void Function(int index)? onHistorySelected;
@@ -34,6 +45,7 @@ class PostyScreen extends StatefulWidget {
 
 class _PostyScreenState extends State<PostyScreen> {
   late final PostyController _controller;
+  PostyWorkspace? _workspace;
   late PostyTheme _theme;
   bool _useDark = true;
 
@@ -48,6 +60,22 @@ class _PostyScreenState extends State<PostyScreen> {
         );
     _theme = PostyTheme.dark();
     _controller.addListener(_onControllerUpdate);
+
+    if (widget.enableLocalWorkspace) {
+      final bearer = PostyEnvironment.bearerFromHeaders(widget.initialHeaders);
+      _workspace = PostyWorkspace(
+        controller: _controller,
+        persistenceId: widget.persistenceId,
+        initialEnvironment: PostyEnvironment(
+          baseUrl: widget.initialBaseUrl,
+          accessToken: bearer ?? '',
+        ),
+      );
+      _workspace!.load().then((_) {
+        _workspace!.attachControllerListener();
+        if (mounted) setState(() {});
+      });
+    }
   }
 
   void _onControllerUpdate() {
@@ -60,6 +88,7 @@ class _PostyScreenState extends State<PostyScreen> {
 
   @override
   void dispose() {
+    _workspace?.detachControllerListener();
     _controller.removeListener(_onControllerUpdate);
     if (widget.controller == null) {
       _controller.dispose();
@@ -76,7 +105,10 @@ class _PostyScreenState extends State<PostyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Theme(
+    final workspaceReady =
+        !widget.enableLocalWorkspace || (_workspace?.isLoaded ?? false);
+
+    final content = Theme(
       data: _theme.toThemeData(),
       child: Scaffold(
         backgroundColor: _theme.scaffoldBackground,
@@ -108,7 +140,7 @@ class _PostyScreenState extends State<PostyScreen> {
               onPressed: _toggleTheme,
               tooltip: 'Toggle theme',
             ),
-            if (widget.showHistoryDrawer)
+            if (widget.showHistoryDrawer && widget.enableLocalWorkspace == false)
               Builder(
                 builder: (ctx) => IconButton(
                   icon: const Icon(Icons.history),
@@ -118,25 +150,48 @@ class _PostyScreenState extends State<PostyScreen> {
               ),
           ],
         ),
-        endDrawer: widget.showHistoryDrawer ? _buildHistoryDrawer() : null,
-        body: LayoutBuilder(
-          builder: (context, constraints) {
-            final wide = constraints.maxWidth >= 900;
-            if (wide) {
-              return PostyHorizontalSplitView(
-                theme: _theme,
-                start: _buildRequestPanel(),
-                end: _buildResponsePanel(),
-              );
-            }
-            return PostyVerticalSplitView(
-              theme: _theme,
-              start: _buildRequestPanel(),
-              end: _buildResponsePanel(),
-            );
-          },
-        ),
+        endDrawer: widget.showHistoryDrawer && !widget.enableLocalWorkspace
+            ? _buildLegacyHistoryDrawer()
+            : null,
+        body: workspaceReady
+            ? Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (widget.enableLocalWorkspace && _workspace != null)
+                    PostySidebar(
+                      workspace: _workspace!,
+                      theme: _theme,
+                    ),
+                  Expanded(child: _buildMainSplit()),
+                ],
+              )
+            : const Center(child: CircularProgressIndicator()),
       ),
+    );
+
+    if (_workspace != null) {
+      return PostyScope(workspace: _workspace, child: content);
+    }
+    return content;
+  }
+
+  Widget _buildMainSplit() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 700;
+        if (wide) {
+          return PostyHorizontalSplitView(
+            theme: _theme,
+            start: _buildRequestPanel(),
+            end: _buildResponsePanel(),
+          );
+        }
+        return PostyVerticalSplitView(
+          theme: _theme,
+          start: _buildRequestPanel(),
+          end: _buildResponsePanel(),
+        );
+      },
     );
   }
 
@@ -182,7 +237,7 @@ class _PostyScreenState extends State<PostyScreen> {
     );
   }
 
-  Widget? _buildHistoryDrawer() {
+  Widget? _buildLegacyHistoryDrawer() {
     final items = widget.historyRequests;
     if (items == null || items.isEmpty) return null;
     return Drawer(

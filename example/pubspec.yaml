@@ -1,5 +1,5 @@
 name: posty_example
-description: Demo app for the Posty API client package.
+description: Demo app for Posty — collections, history, and Insomnia import.
 publish_to: 'none'
 version: 1.0.0+1
 

@@ -4,6 +4,7 @@ import 'package:posty/src/state/posty_controller.dart';
 import 'package:posty/src/theme/posty_theme.dart';
 import 'package:posty/src/widgets/form_body_editor.dart';
 import 'package:posty/src/widgets/key_value_editor.dart';
+import 'package:posty/src/widgets/posty_scope.dart';
 import 'package:posty/src/widgets/posty_url_preview.dart';
 
 class RequestTabs extends StatelessWidget {
@@ -423,7 +424,10 @@ class _AuthTabState extends State<_AuthTab> {
               focusNode: _bearerFocus,
               decoration: const InputDecoration(labelText: 'Bearer token'),
               obscureText: true,
-              onChanged: c.setBearerToken,
+              onChanged: (value) {
+                c.setBearerToken(value);
+                PostyScope.maybeOf(context)?.setEnvironmentAccessToken(value);
+              },
             ),
           if (c.authType == AuthType.basic) ...[
             TextField(

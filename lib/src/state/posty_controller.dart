@@ -2,7 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:posty/src/models/key_value_row.dart';
 import 'package:posty/src/models/posty_enums.dart';
 import 'package:posty/src/models/posty_request.dart';
+import 'package:posty/src/models/posty_history_entry.dart';
 import 'package:posty/src/models/posty_response.dart';
+import 'package:posty/src/models/posty_response_snapshot.dart';
 import 'package:posty/src/posty_defaults.dart';
 import 'package:posty/src/services/posty_http_service.dart';
 import 'package:posty/src/utils/json_pretty.dart';
@@ -336,9 +338,81 @@ class PostyController extends ChangeNotifier {
         apiKeyValue: apiKeyValue,
       );
 
+  void loadHistoryEntry(PostyHistoryEntry entry) {
+    loadRequest(entry.request);
+    if (entry.response != null) {
+      lastResponse = _responseFromSnapshot(entry.response!);
+      lastSentAt = entry.sentAt;
+    } else {
+      lastResponse = null;
+      lastSentAt = entry.sentAt;
+    }
+    notifyListeners();
+  }
+
+  void clearResponse() {
+    lastResponse = null;
+    lastSentAt = null;
+    notifyListeners();
+  }
+
+  /// Blank request; keeps current [baseUrl] and [headers] when [keepHeaders] is true.
+  void newRequest({bool keepHeaders = true}) {
+    final savedBase = baseUrl;
+    final savedHeaders = keepHeaders ? List<KeyValueRow>.from(headers) : null;
+    method = HttpMethod.get;
+    path = '';
+    queryParams = [const KeyValueRow()];
+    bodyType = BodyType.none;
+    jsonBody = '';
+    formBody = [const KeyValueRow()];
+    authType = AuthType.none;
+    bearerToken = '';
+    basicUsername = '';
+    basicPassword = '';
+    apiKeyValue = '';
+    lastResponse = null;
+    lastSentAt = null;
+    baseUrl = savedBase;
+    if (savedHeaders != null && savedHeaders.isNotEmpty) {
+      headers = savedHeaders;
+    } else {
+      headers = [const KeyValueRow()];
+    }
+    notifyListeners();
+  }
+
+  PostyResponseSnapshot? snapshotResponse() {
+    final r = lastResponse;
+    if (r == null) return null;
+    return PostyResponseSnapshot(
+      body: r.body.length > 200000 ? r.body.substring(0, 200000) : r.body,
+      statusCode: r.statusCode,
+      statusMessage: r.statusMessage,
+      headers: r.headers,
+      durationMs: r.durationMs,
+      isSuccess: r.isSuccess,
+      errorMessage: r.errorMessage,
+    );
+  }
+
+  PostyResponse _responseFromSnapshot(PostyResponseSnapshot s) {
+    return PostyResponse(
+      body: s.body,
+      statusCode: s.statusCode,
+      statusMessage: s.statusMessage,
+      headers: s.headers,
+      durationMs: s.durationMs,
+      isSuccess: s.isSuccess,
+      errorMessage: s.errorMessage,
+    );
+  }
+
   void loadRequest(PostyRequest request) {
     method = request.method;
-    baseUrl = request.baseUrl;
+    if (request.baseUrl.trim().isNotEmpty) {
+      baseUrl = request.baseUrl;
+    }
     path = request.path;
     queryParams = request.queryParams.isEmpty
         ? [const KeyValueRow()]

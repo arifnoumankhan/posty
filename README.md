@@ -11,8 +11,10 @@ Lightweight in-app REST API client for Flutter. Test endpoints without leaving y
 - **Headers** — editable rows with presets
 - **Response** — status, timing, size; preview & headers tabs; pretty JSON and copy
 - **Convert to JSON** — embedded [quicktype](https://app.quicktype.io/) WebView tab
-- **Layout** — draggable horizontal/vertical split; dark/light theme; optional history drawer
+- **Layout** — draggable horizontal/vertical split; dark/light theme
 - **Host integration** — open in-app, new desktop window, or new browser tab (`PostyLauncher`, `PostyBootstrap`)
+- **Collections + History sidebar** — import Insomnia YAML; environment (`base_url`, `access_token`); right-click **duplicate / rename / add / delete**; expand/collapse all folders
+- **Local history** — last 50 calls with request + response snapshots (reload from History tab)
 
 ## Install
 
@@ -45,7 +47,8 @@ PostyScreen(
   initialBaseUrl: 'https://api.example.com',
   initialHeaders: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
   initialQuicktypeConverterUrl: PostyDefaults.quicktypeConverterUrl,
-  showHistoryDrawer: true,
+  persistenceId: 'my_app',
+  enableLocalWorkspace: true,
 )
 ```
 
@@ -100,7 +103,7 @@ flutter pub get
 flutter run
 ```
 
-The example persists **base URL** and the last **20 requests** using `shared_preferences`.
+The example runs full **PostyScreen** with collections, history, and environment saved locally (`persistenceId: posty_example`).
 
 ## Programmatic API
 

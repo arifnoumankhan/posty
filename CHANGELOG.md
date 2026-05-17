@@ -2,6 +2,31 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.3.0] - 2026-05-16
+
+### Added
+
+- **Collections + History sidebar** on `PostyScreen` (enabled by default via `enableLocalWorkspace`).
+- **Local history** — last 50 sends with full request + response snapshots (`shared_preferences`).
+- **Insomnia import** — REST v5 `.yaml` / `.yml` exports; folder tree kept in **Insomnia `sortKey` order**.
+- **Environment** — `base_url` and `access_token` fields; changes apply to the active request and **all** collection requests. Host `Authorization: Bearer` header seeds `access_token`.
+- **Collection actions** — toolbar **new request**, **import**, **expand/collapse all** folders.
+- **Right-click menu** on folders and requests: **Duplicate**, **Rename**, **Add request**, **Delete** (with confirm).
+- `PostyWorkspace`, `PostyEnvironment`, `InsomniaYamlImporter`, `PostySidebar`, `PostyScope`, and related models.
+
+### Changed
+
+- Example app simplified to a single `PostyScreen` with built-in persistence (`persistenceId`).
+- Bearer token edits on the Auth tab sync to the environment and all collection requests.
+
+### Fixed
+
+- **Collections / History** tab switcher now updates correctly when returning to Collections.
+
+### Dependencies
+
+- Added `shared_preferences`, `yaml`.
+
 ## [0.2.0] - 2026-05-16
 
 ### Added
