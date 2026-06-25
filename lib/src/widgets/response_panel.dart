@@ -252,14 +252,128 @@ class _PreviewTab extends StatelessWidget {
   }
 
   List<TextSpan> _buildHighlightedLines(List<String> lines) {
+    // Syntax-highlight colours (dark & light aware)
+    final bool isDark = theme.brightness == Brightness.dark;
+    final Color lineNumColor  = theme.textSecondary.withValues(alpha: 0.35);
+    final Color gutterColor   = theme.textSecondary.withValues(alpha: 0.2);
+    final Color keyColor      = isDark ? const Color(0xFF79C0FF) : const Color(0xFF0550AE);
+    final Color strColor      = isDark ? const Color(0xFF7EE787) : const Color(0xFF1A7F37);
+    final Color numColor      = isDark ? const Color(0xFFFF9A4D) : const Color(0xFFD1242F);
+    final Color boolNullColor = isDark ? const Color(0xFFD2A8FF) : const Color(0xFF8250DF);
+    final Color punctColor    = theme.textSecondary.withValues(alpha: 0.6);
+    final Color plainColor    = theme.textPrimary;
+
     final spans = <TextSpan>[];
     for (var i = 0; i < lines.length; i++) {
-      spans.add(
-        TextSpan(
-          text: '${(i + 1).toString().padLeft(4)} │ ${lines[i]}\n',
-          style: TextStyle(color: theme.textSecondary.withValues(alpha: 0.7)),
-        ),
-      );
+      final lineNum = (i + 1).toString().padLeft(4);
+      spans.add(TextSpan(
+        text: lineNum,
+        style: TextStyle(color: lineNumColor, fontSize: 11),
+      ));
+      spans.add(TextSpan(
+        text: ' │ ',
+        style: TextStyle(color: gutterColor),
+      ));
+      spans.addAll(_tokeniseLine(lines[i], keyColor, strColor, numColor, boolNullColor, punctColor, plainColor));
+      spans.add(const TextSpan(text: '\n'));
+    }
+    return spans;
+  }
+
+  /// Tokenises a single JSON line into coloured [TextSpan]s.
+  List<TextSpan> _tokeniseLine(
+    String line,
+    Color keyColor,
+    Color strColor,
+    Color numColor,
+    Color boolNullColor,
+    Color punctColor,
+    Color plainColor,
+  ) {
+    final spans = <TextSpan>[];
+    int pos = 0;
+    final len = line.length;
+
+    while (pos < len) {
+      final ch = line[pos];
+
+      // Whitespace — preserve as-is
+      if (ch == ' ' || ch == '\t') {
+        int end = pos + 1;
+        while (end < len && (line[end] == ' ' || line[end] == '\t')) end++;
+        spans.add(TextSpan(text: line.substring(pos, end)));
+        pos = end;
+        continue;
+      }
+
+      // String literal
+      if (ch == '"') {
+        int end = pos + 1;
+        while (end < len) {
+          if (line[end] == '\\') { end += 2; continue; }
+          if (line[end] == '"') { end++; break; }
+          end++;
+        }
+        final raw = line.substring(pos, end);
+        // Is it a key? (followed by optional spaces then ':')
+        bool isKey = false;
+        int after = end;
+        while (after < len && (line[after] == ' ' || line[after] == '\t')) after++;
+        if (after < len && line[after] == ':') isKey = true;
+
+        if (isKey) {
+          spans.add(TextSpan(text: raw, style: TextStyle(color: keyColor, fontWeight: FontWeight.w600)));
+        } else {
+          spans.add(TextSpan(text: raw, style: TextStyle(color: strColor)));
+        }
+        pos = end;
+        continue;
+      }
+
+      // Number
+      if (ch == '-' || (ch.codeUnitAt(0) >= 48 && ch.codeUnitAt(0) <= 57)) {
+        int end = pos + 1;
+        while (end < len) {
+          final c = line[end];
+          if ((c.codeUnitAt(0) >= 48 && c.codeUnitAt(0) <= 57) ||
+              c == '.' || c == 'e' || c == 'E' || c == '+' || c == '-') {
+            end++;
+          } else {
+            break;
+          }
+        }
+        spans.add(TextSpan(text: line.substring(pos, end), style: TextStyle(color: numColor)));
+        pos = end;
+        continue;
+      }
+
+      // Booleans and null
+      if (line.startsWith('true', pos)) {
+        spans.add(TextSpan(text: 'true', style: TextStyle(color: boolNullColor, fontStyle: FontStyle.italic)));
+        pos += 4;
+        continue;
+      }
+      if (line.startsWith('false', pos)) {
+        spans.add(TextSpan(text: 'false', style: TextStyle(color: boolNullColor, fontStyle: FontStyle.italic)));
+        pos += 5;
+        continue;
+      }
+      if (line.startsWith('null', pos)) {
+        spans.add(TextSpan(text: 'null', style: TextStyle(color: boolNullColor, fontStyle: FontStyle.italic)));
+        pos += 4;
+        continue;
+      }
+
+      // Punctuation: { } [ ] : ,
+      if ('{}[],:'.contains(ch)) {
+        spans.add(TextSpan(text: ch, style: TextStyle(color: punctColor)));
+        pos++;
+        continue;
+      }
+
+      // Fallback
+      spans.add(TextSpan(text: ch, style: TextStyle(color: plainColor)));
+      pos++;
     }
     return spans;
   }
