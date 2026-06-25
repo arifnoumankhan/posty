@@ -44,7 +44,18 @@ class PostyWorkspace extends ChangeNotifier {
     collections = await _store.loadCollections();
     final savedEnv = await _store.loadEnvironment();
     if (savedEnv != null) {
-      environment = savedEnv;
+      // Merge: keep saved state (collections, history, etc.) but always let the
+      // host-provided initial values win for baseUrl and accessToken so the parent
+      // app can inject the correct server URL and auth token on every launch.
+      environment = savedEnv.copyWith(
+        baseUrl: _initialEnvironment.baseUrl.isNotEmpty
+            ? _initialEnvironment.baseUrl
+            : savedEnv.baseUrl,
+        accessToken: _initialEnvironment.accessToken.isNotEmpty
+            ? _initialEnvironment.accessToken
+            : savedEnv.accessToken,
+      );
+      await _persistEnvironment();
     } else {
       environment = _initialEnvironment;
       await _persistEnvironment();
