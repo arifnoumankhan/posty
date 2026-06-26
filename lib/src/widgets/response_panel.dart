@@ -160,7 +160,7 @@ class _ResponseTabBar extends StatelessWidget {
       children: [
         _tab('Preview', 0),
         _tab('Headers ($headerCount)', 1),
-        _tab('Convert to JSON', 2),
+        _tab('Convert to Model', 2),
       ],
     );
   }
@@ -235,13 +235,9 @@ class _PreviewTab extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               child: SelectableText.rich(
                 TextSpan(
+                  // No color here — each token span carries its own color
+                  style: const TextStyle(fontFamily: 'monospace', fontSize: 12, height: 1.5),
                   children: _buildHighlightedLines(lines),
-                ),
-                style: TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 12,
-                  height: 1.45,
-                  color: theme.textPrimary,
                 ),
               ),
             ),
@@ -252,41 +248,39 @@ class _PreviewTab extends StatelessWidget {
   }
 
   List<TextSpan> _buildHighlightedLines(List<String> lines) {
-    // Syntax-highlight colours (dark & light aware)
-    final bool isDark = theme.brightness == Brightness.dark;
-    final Color lineNumColor  = theme.textSecondary.withValues(alpha: 0.35);
-    final Color gutterColor   = theme.textSecondary.withValues(alpha: 0.2);
-    final Color keyColor      = isDark ? const Color(0xFF79C0FF) : const Color(0xFF0550AE);
-    final Color strColor      = isDark ? const Color(0xFF7EE787) : const Color(0xFF1A7F37);
-    final Color numColor      = isDark ? const Color(0xFFFF9A4D) : const Color(0xFFD1242F);
-    final Color boolNullColor = isDark ? const Color(0xFFD2A8FF) : const Color(0xFF8250DF);
-    final Color punctColor    = theme.textSecondary.withValues(alpha: 0.6);
-    final Color plainColor    = theme.textPrimary;
+    const Color lineNumColor  = Color(0xFF4A5568);
+    const Color gutterColor   = Color(0xFF2D3748);
+    const Color keyColor      = Color(0xFF79C0FF); // blue  — keys
+    const Color strColor      = Color(0xFF7EE787); // green — string values
+    const Color numColor      = Color(0xFFFF9A4D); // orange — numbers
+    const Color boolColor     = Color(0xFFD2A8FF); // purple — true/false/null
+    const Color punctColor    = Color(0xFF8B949E); // grey — { } [ ] : ,
+    const Color plainColor    = Color(0xFFE8E9ED); // white — fallback
 
     final spans = <TextSpan>[];
     for (var i = 0; i < lines.length; i++) {
-      final lineNum = (i + 1).toString().padLeft(4);
+      // Line number gutter
       spans.add(TextSpan(
-        text: lineNum,
-        style: TextStyle(color: lineNumColor, fontSize: 11),
+        text: '${(i + 1).toString().padLeft(4)} ',
+        style: const TextStyle(color: lineNumColor, fontSize: 11),
       ));
-      spans.add(TextSpan(
-        text: ' │ ',
+      spans.add(const TextSpan(
+        text: '│ ',
         style: TextStyle(color: gutterColor),
       ));
-      spans.addAll(_tokeniseLine(lines[i], keyColor, strColor, numColor, boolNullColor, punctColor, plainColor));
+      // Tokenised line content
+      spans.addAll(_tokeniseLine(lines[i], keyColor, strColor, numColor, boolColor, punctColor, plainColor));
       spans.add(const TextSpan(text: '\n'));
     }
     return spans;
   }
 
-  /// Tokenises a single JSON line into coloured [TextSpan]s.
   List<TextSpan> _tokeniseLine(
     String line,
     Color keyColor,
     Color strColor,
     Color numColor,
-    Color boolNullColor,
+    Color boolColor,
     Color punctColor,
     Color plainColor,
   ) {
@@ -297,16 +291,16 @@ class _PreviewTab extends StatelessWidget {
     while (pos < len) {
       final ch = line[pos];
 
-      // Whitespace — preserve as-is
+      // Whitespace
       if (ch == ' ' || ch == '\t') {
         int end = pos + 1;
         while (end < len && (line[end] == ' ' || line[end] == '\t')) end++;
-        spans.add(TextSpan(text: line.substring(pos, end)));
+        spans.add(TextSpan(text: line.substring(pos, end), style: TextStyle(color: plainColor)));
         pos = end;
         continue;
       }
 
-      // String literal
+      // String
       if (ch == '"') {
         int end = pos + 1;
         while (end < len) {
@@ -315,17 +309,17 @@ class _PreviewTab extends StatelessWidget {
           end++;
         }
         final raw = line.substring(pos, end);
-        // Is it a key? (followed by optional spaces then ':')
-        bool isKey = false;
+        // Key = string followed by ':'
         int after = end;
         while (after < len && (line[after] == ' ' || line[after] == '\t')) after++;
-        if (after < len && line[after] == ':') isKey = true;
-
-        if (isKey) {
-          spans.add(TextSpan(text: raw, style: TextStyle(color: keyColor, fontWeight: FontWeight.w600)));
-        } else {
-          spans.add(TextSpan(text: raw, style: TextStyle(color: strColor)));
-        }
+        final isKey = after < len && line[after] == ':';
+        spans.add(TextSpan(
+          text: raw,
+          style: TextStyle(
+            color: isKey ? keyColor : strColor,
+            fontWeight: isKey ? FontWeight.w600 : FontWeight.normal,
+          ),
+        ));
         pos = end;
         continue;
       }
@@ -335,8 +329,8 @@ class _PreviewTab extends StatelessWidget {
         int end = pos + 1;
         while (end < len) {
           final c = line[end];
-          if ((c.codeUnitAt(0) >= 48 && c.codeUnitAt(0) <= 57) ||
-              c == '.' || c == 'e' || c == 'E' || c == '+' || c == '-') {
+          final cu = c.codeUnitAt(0);
+          if ((cu >= 48 && cu <= 57) || c == '.' || c == 'e' || c == 'E' || c == '+' || c == '-') {
             end++;
           } else {
             break;
@@ -347,28 +341,24 @@ class _PreviewTab extends StatelessWidget {
         continue;
       }
 
-      // Booleans and null
+      // true / false / null
       if (line.startsWith('true', pos)) {
-        spans.add(TextSpan(text: 'true', style: TextStyle(color: boolNullColor, fontStyle: FontStyle.italic)));
-        pos += 4;
-        continue;
+        spans.add(TextSpan(text: 'true', style: TextStyle(color: boolColor, fontStyle: FontStyle.italic)));
+        pos += 4; continue;
       }
       if (line.startsWith('false', pos)) {
-        spans.add(TextSpan(text: 'false', style: TextStyle(color: boolNullColor, fontStyle: FontStyle.italic)));
-        pos += 5;
-        continue;
+        spans.add(TextSpan(text: 'false', style: TextStyle(color: boolColor, fontStyle: FontStyle.italic)));
+        pos += 5; continue;
       }
       if (line.startsWith('null', pos)) {
-        spans.add(TextSpan(text: 'null', style: TextStyle(color: boolNullColor, fontStyle: FontStyle.italic)));
-        pos += 4;
-        continue;
+        spans.add(TextSpan(text: 'null', style: TextStyle(color: boolColor, fontStyle: FontStyle.italic)));
+        pos += 4; continue;
       }
 
-      // Punctuation: { } [ ] : ,
+      // Punctuation
       if ('{}[],:'.contains(ch)) {
         spans.add(TextSpan(text: ch, style: TextStyle(color: punctColor)));
-        pos++;
-        continue;
+        pos++; continue;
       }
 
       // Fallback

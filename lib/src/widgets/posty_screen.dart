@@ -116,7 +116,25 @@ class _PostyScreenState extends State<PostyScreen> {
           backgroundColor: _theme.panelBackground,
           foregroundColor: _theme.textPrimary,
           elevation: 0,
-          title: const Text('Posty'),
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Posty', style: TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7C5CFF).withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: const Color(0xFF7C5CFF).withValues(alpha: 0.45)),
+                ),
+                child: const Text(
+                  'v0.4.0',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF9D7FFF)),
+                ),
+              ),
+            ],
+          ),
           actions: [
             ListenableBuilder(
               listenable: _controller,

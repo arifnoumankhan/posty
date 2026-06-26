@@ -1,6 +1,6 @@
 name: posty
 description: Lightweight in-app API client for Flutter — test REST endpoints without leaving your app.
-version: 0.3.0
+version: 0.4.0
 homepage: https://github.com/arifnoumankhan/posty
 
 environment:

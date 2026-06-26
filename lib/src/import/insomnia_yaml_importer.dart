@@ -115,12 +115,25 @@ class InsomniaYamlImporter {
     final method = _parseMethod(map['method']?.toString());
     final (baseUrl, path) = _splitInsomniaUrl(rawUrl, hostBaseUrl);
 
+    // ── Query params ──────────────────────────────────────────────────────────
+    // Insomnia stores query params in a `parameters` list (separate from the
+    // URL string). Fall back to extracting them from the URL's `?` portion if
+    // the field is absent.
     var queryParams = <KeyValueRow>[];
     var pathOnly = path;
-    final q = path.indexOf('?');
-    if (q != -1) {
-      pathOnly = path.substring(0, q);
-      queryParams = UrlBuilder.importQueryFromPathOrUrl(path, baseUrl);
+
+    final parametersRaw = map['parameters'];
+    if (parametersRaw is YamlList) {
+      queryParams = _parseQueryParams(parametersRaw);
+      // Strip any inline query string so we don't double-up
+      final q = pathOnly.indexOf('?');
+      if (q != -1) pathOnly = pathOnly.substring(0, q);
+    } else {
+      final q = path.indexOf('?');
+      if (q != -1) {
+        pathOnly = path.substring(0, q);
+        queryParams = UrlBuilder.importQueryFromPathOrUrl(path, baseUrl);
+      }
     }
 
     var headers = _parseHeaders(map['headers']);
@@ -213,6 +226,23 @@ class InsomniaYamlImporter {
     return rows;
   }
 
+  static List<KeyValueRow> _parseQueryParams(dynamic raw) {
+    if (raw is! YamlList) return [];
+    final rows = <KeyValueRow>[];
+    for (final item in raw) {
+      if (item is! YamlMap) continue;
+      final key = item['name']?.toString() ?? '';
+      if (key.isEmpty) continue;
+      rows.add(KeyValueRow(
+        key: key,
+        value: item['value']?.toString() ?? '',
+        description: item['description']?.toString() ?? '',
+        enabled: !(item['disabled'] == true),
+      ));
+    }
+    return rows;
+  }
+
   static List<KeyValueRow> _parseBodyParams(dynamic raw) {
     if (raw is! YamlList) return [];
     final rows = <KeyValueRow>[];
@@ -224,6 +254,7 @@ class InsomniaYamlImporter {
       rows.add(KeyValueRow(
         key: key,
         value: item['value']?.toString() ?? '',
+        description: item['description']?.toString() ?? '',
         enabled: !(item['disabled'] == true),
         formValueType: isFile ? FormValueType.file : FormValueType.text,
         fileName: isFile ? item['fileName']?.toString() : null,

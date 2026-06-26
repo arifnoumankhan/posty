@@ -2,6 +2,29 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.4.0] - 2026-06-26
+
+### Added
+
+- **Duplicate collection detection on import** — when importing an Insomnia YAML whose workspace name matches an existing collection, a dialog prompts to **Replace**, **Import as Duplicate**, or **Cancel**.
+- **Version badge** next to the Posty title in the app bar (`v0.4.0`).
+- **Description column** in Params, Headers, and Body (form) editors — imported from Insomnia's `description` field.
+- **Insomnia query param import** — reads `parameters` YAML field directly instead of only parsing the URL string, preserving enabled/disabled state and descriptions.
+
+### Changed
+
+- **JSON response panel** — syntax-highlighted with colour-coded keys (blue), strings (green), numbers (orange), and booleans/null (purple). Tab renamed from "Convert to JSON" to "Convert to Model".
+- **JSON request body editor** — live syntax highlighting as you type via a custom `TextEditingController`; no tap-to-toggle required.
+- **Auto tab switching** — selecting a POST/PUT/PATCH request opens the Body tab; GET/DELETE/HEAD opens Params.
+- **Edit retention on navigation** — params, body, and headers edited in the UI are flushed back to the collection node before switching to another request, so changes are never lost.
+
+### Fixed
+
+- Bearer token dropped on first render frame (`PostyApiScreen` now reads synchronously from the pre-initialised prefs singleton).
+- Base URL reverting to localhost — persisted environment is now merged with host-supplied `initialBaseUrl` / `initialEnvironment`; host values always win.
+- JSON syntax colours not rendering — removed parent `color` from `SelectableText.rich` so child `TextSpan` colours take effect.
+- macOS entitlement `com.apple.security.files.user-selected.read-write` re-added after accidental revert, enabling file picker for Insomnia YAML import.
+
 ## [0.3.0] - 2026-05-16
 
 ### Added

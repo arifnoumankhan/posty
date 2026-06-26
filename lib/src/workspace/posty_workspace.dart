@@ -168,7 +168,23 @@ class PostyWorkspace extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> importInsomniaYaml(String yaml) async {
+  /// Returns the name of the workspace in [yaml] without importing it.
+  /// Useful for checking duplicates before committing.
+  String peekInsomniaWorkspaceName(String yaml) {
+    final result = InsomniaYamlImporter.parse(
+      yaml,
+      hostBaseUrl: environment.baseUrl,
+      hostAccessToken: environment.accessToken,
+    );
+    return result.workspaceName;
+  }
+
+  /// Returns true if a top-level collection folder with [name] already exists.
+  bool hasCollectionNamed(String name) {
+    return collections.any((c) => c.isFolder && c.name == name);
+  }
+
+  Future<void> importInsomniaYaml(String yaml, {bool replace = false}) async {
     final result = InsomniaYamlImporter.parse(
       yaml,
       hostBaseUrl: environment.baseUrl,
@@ -184,7 +200,22 @@ class PostyWorkspace extends ChangeNotifier {
       children: roots,
       expanded: allFoldersExpanded,
     );
-    collections = [...collections, folder];
+    if (replace) {
+      // Remove the first existing collection with the same name, then prepend
+      final idx = collections.indexWhere(
+        (c) => c.isFolder && c.name == result.workspaceName,
+      );
+      if (idx != -1) {
+        final updated = List<PostyCollectionNode>.from(collections)
+          ..removeAt(idx)
+          ..insert(idx, folder);
+        collections = updated;
+      } else {
+        collections = [...collections, folder];
+      }
+    } else {
+      collections = [...collections, folder];
+    }
     await _store.saveCollections(collections);
     notifyListeners();
   }
@@ -211,6 +242,10 @@ class PostyWorkspace extends ChangeNotifier {
   }
 
   void selectCollectionNode(String id) {
+    // Flush any unsaved edits from the current request back into the collection
+    // before switching, so params/body changes are retained.
+    _flushCurrentNodeEdits();
+
     final node = findNode(id);
     if (node == null || !node.isRequest || node.request == null) return;
     selectedNodeId = id;
@@ -220,6 +255,22 @@ class PostyWorkspace extends ChangeNotifier {
       controller.importQueryFromUrl();
     }
     notifyListeners();
+  }
+
+  /// Saves the controller's current state back to the selected collection node
+  /// so user edits (params, body, headers, etc.) are not lost on navigation.
+  void _flushCurrentNodeEdits() {
+    final currentId = selectedNodeId;
+    if (currentId == null) return;
+    final currentNode = findNode(currentId);
+    if (currentNode == null || !currentNode.isRequest) return;
+    final updatedRequest = controller.toRequest();
+    collections = _mapNodes(
+      collections,
+      currentId,
+      (n) => n.copyWith(request: updatedRequest),
+    );
+    _persistCollections();
   }
 
   Future<void> duplicateCollectionNode(String id) async {

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:posty/src/models/key_value_row.dart';
 import 'package:posty/src/theme/posty_theme.dart';
 
-typedef RowUpdater = void Function(int index, {String? key, String? value, bool? enabled});
+typedef RowUpdater = void Function(int index, {String? key, String? value, String? description, bool? enabled});
 
 class KeyValueEditor extends StatefulWidget {
   const KeyValueEditor({
@@ -29,8 +29,10 @@ class KeyValueEditor extends StatefulWidget {
 class _KeyValueEditorState extends State<KeyValueEditor> {
   final List<TextEditingController> _keyControllers = [];
   final List<TextEditingController> _valueControllers = [];
+  final List<TextEditingController> _descControllers = [];
   final List<FocusNode> _keyFocusNodes = [];
   final List<FocusNode> _valueFocusNodes = [];
+  final List<FocusNode> _descFocusNodes = [];
 
   @override
   void initState() {
@@ -56,48 +58,43 @@ class _KeyValueEditorState extends State<KeyValueEditor> {
       if (_valueControllers[i].text != widget.rows[i].value) {
         _valueControllers[i].text = widget.rows[i].value;
       }
+      if (_descControllers[i].text != widget.rows[i].description) {
+        _descControllers[i].text = widget.rows[i].description;
+      }
     }
   }
 
   void _syncControllers() {
-    for (final c in _keyControllers) {
-      c.dispose();
-    }
-    for (final c in _valueControllers) {
-      c.dispose();
-    }
-    for (final n in _keyFocusNodes) {
-      n.dispose();
-    }
-    for (final n in _valueFocusNodes) {
-      n.dispose();
-    }
+    for (final c in _keyControllers) c.dispose();
+    for (final c in _valueControllers) c.dispose();
+    for (final c in _descControllers) c.dispose();
+    for (final n in _keyFocusNodes) n.dispose();
+    for (final n in _valueFocusNodes) n.dispose();
+    for (final n in _descFocusNodes) n.dispose();
     _keyControllers.clear();
     _valueControllers.clear();
+    _descControllers.clear();
     _keyFocusNodes.clear();
     _valueFocusNodes.clear();
+    _descFocusNodes.clear();
     for (final row in widget.rows) {
       _keyControllers.add(TextEditingController(text: row.key));
       _valueControllers.add(TextEditingController(text: row.value));
+      _descControllers.add(TextEditingController(text: row.description));
       _keyFocusNodes.add(FocusNode());
       _valueFocusNodes.add(FocusNode());
+      _descFocusNodes.add(FocusNode());
     }
   }
 
   @override
   void dispose() {
-    for (final c in _keyControllers) {
-      c.dispose();
-    }
-    for (final c in _valueControllers) {
-      c.dispose();
-    }
-    for (final n in _keyFocusNodes) {
-      n.dispose();
-    }
-    for (final n in _valueFocusNodes) {
-      n.dispose();
-    }
+    for (final c in _keyControllers) c.dispose();
+    for (final c in _valueControllers) c.dispose();
+    for (final c in _descControllers) c.dispose();
+    for (final n in _keyFocusNodes) n.dispose();
+    for (final n in _valueFocusNodes) n.dispose();
+    for (final n in _descFocusNodes) n.dispose();
     super.dispose();
   }
 
@@ -113,25 +110,15 @@ class _KeyValueEditorState extends State<KeyValueEditor> {
           children: [
             const SizedBox(width: 40),
             Expanded(
-              child: Text(
-                'Key',
-                style: TextStyle(
-                  color: theme.textSecondary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              child: Text('Key', style: TextStyle(color: theme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(
-                'Value',
-                style: TextStyle(
-                  color: theme.textSecondary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              child: Text('Value', style: TextStyle(color: theme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text('Description', style: TextStyle(color: theme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
             ),
             const SizedBox(width: 40),
           ],
@@ -166,6 +153,19 @@ class _KeyValueEditorState extends State<KeyValueEditor> {
                     onChanged: (v) => widget.onChanged(index, value: v),
                     style: TextStyle(color: theme.textPrimary, fontSize: 13),
                     decoration: const InputDecoration(hintText: 'value'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: _descControllers[index],
+                    focusNode: _descFocusNodes[index],
+                    onChanged: (v) => widget.onChanged(index, description: v),
+                    style: TextStyle(color: theme.textSecondary, fontSize: 12),
+                    decoration: InputDecoration(
+                      hintText: 'description',
+                      hintStyle: TextStyle(color: theme.textSecondary.withValues(alpha: 0.4), fontSize: 12),
+                    ),
                   ),
                 ),
                 IconButton(

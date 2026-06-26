@@ -201,11 +201,12 @@ class PostyController extends ChangeNotifier {
     apiKeyValue = value;
   }
 
-  void updateQueryParam(int index, {String? key, String? value, bool? enabled}) {
+  void updateQueryParam(int index, {String? key, String? value, String? description, bool? enabled}) {
     if (index < 0 || index >= queryParams.length) return;
     queryParams[index] = queryParams[index].copyWith(
       key: key,
       value: value,
+      description: description,
       enabled: enabled,
     );
     notifyListeners();
@@ -241,11 +242,12 @@ class PostyController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void updateHeader(int index, {String? key, String? value, bool? enabled}) {
+  void updateHeader(int index, {String? key, String? value, String? description, bool? enabled}) {
     if (index < 0 || index >= headers.length) return;
     headers[index] = headers[index].copyWith(
       key: key,
       value: value,
+      description: description,
       enabled: enabled,
     );
     notifyListeners();
@@ -429,6 +431,9 @@ class PostyController extends ChangeNotifier {
     basicPassword = request.basicPassword;
     apiKeyHeader = request.apiKeyHeader;
     apiKeyValue = request.apiKeyValue;
+    // POST, PUT, PATCH → Body tab. GET, DELETE, HEAD → Params tab.
+    const bodyMethods = {HttpMethod.post, HttpMethod.put, HttpMethod.patch};
+    requestTabIndex = bodyMethods.contains(request.method) ? 1 : 0;
     notifyListeners();
   }
 

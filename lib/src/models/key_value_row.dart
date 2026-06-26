@@ -6,6 +6,7 @@ class KeyValueRow {
   const KeyValueRow({
     this.key = '',
     this.value = '',
+    this.description = '',
     this.enabled = true,
     this.formValueType = FormValueType.text,
     this.filePath,
@@ -15,6 +16,7 @@ class KeyValueRow {
 
   final String key;
   final String value;
+  final String description;
   final bool enabled;
   /// Used for [BodyType.form] rows only.
   final FormValueType formValueType;
@@ -31,6 +33,7 @@ class KeyValueRow {
   KeyValueRow copyWith({
     String? key,
     String? value,
+    String? description,
     bool? enabled,
     FormValueType? formValueType,
     String? filePath,
@@ -41,6 +44,7 @@ class KeyValueRow {
     return KeyValueRow(
       key: key ?? this.key,
       value: value ?? this.value,
+      description: description ?? this.description,
       enabled: enabled ?? this.enabled,
       formValueType: formValueType ?? this.formValueType,
       filePath: clearFile ? null : (filePath ?? this.filePath),
@@ -52,6 +56,7 @@ class KeyValueRow {
   Map<String, dynamic> toJson() => {
         'key': key,
         'value': value,
+        if (description.isNotEmpty) 'description': description,
         'enabled': enabled,
         'formValueType': formValueType.name,
         if (filePath != null) 'filePath': filePath,
@@ -69,6 +74,7 @@ class KeyValueRow {
     return KeyValueRow(
       key: json['key'] as String? ?? '',
       value: json['value'] as String? ?? '',
+      description: json['description'] as String? ?? '',
       enabled: json['enabled'] as bool? ?? true,
       formValueType: formValueType,
       filePath: json['filePath'] as String?,

@@ -208,13 +208,46 @@ class _PostySidebarState extends State<PostySidebar> {
       );
       if (result == null || result.files.isEmpty) return;
       final file = result.files.single;
-      final yaml =
-          file.bytes != null ? utf8.decode(file.bytes!) : null;
+      final yaml = file.bytes != null ? utf8.decode(file.bytes!) : null;
       if (yaml == null || yaml.isEmpty) return;
-      await workspace.importInsomniaYaml(yaml);
+
+      // Check for duplicate workspace name before importing
+      final name = workspace.peekInsomniaWorkspaceName(yaml);
+      bool replace = false;
+      if (workspace.hasCollectionNamed(name) && context.mounted) {
+        final choice = await showDialog<_ImportChoice>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Duplicate Collection'),
+            content: Text(
+              '"$name" already exists in your collections.\nWhat would you like to do?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, _ImportChoice.cancel),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, _ImportChoice.duplicate),
+                child: const Text('Import as Duplicate'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, _ImportChoice.replace),
+                child: const Text('Replace'),
+              ),
+            ],
+          ),
+        );
+        if (choice == null || choice == _ImportChoice.cancel) return;
+        replace = choice == _ImportChoice.replace;
+      }
+
+      await workspace.importInsomniaYaml(yaml, replace: replace);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Insomnia collection imported')),
+          SnackBar(content: Text(
+            replace ? 'Collection replaced.' : 'Collection imported.',
+          )),
         );
       }
     } catch (e) {
@@ -488,3 +521,5 @@ class _MethodBadge extends StatelessWidget {
     );
   }
 }
+
+enum _ImportChoice { replace, duplicate, cancel }
