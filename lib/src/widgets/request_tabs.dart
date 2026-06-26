@@ -254,22 +254,11 @@ class _BodyTabState extends State<_BodyTab> {
                   child: const Text('Format JSON'),
                 ),
               ),
-              TextField(
+              _JsonBodyEditor(
                 controller: _jsonController,
                 focusNode: _jsonFocus,
+                theme: theme,
                 onChanged: c.setJsonBody,
-                maxLines: null,
-                minLines: 12,
-                style: TextStyle(
-                  color: theme.textPrimary,
-                  fontFamily: 'monospace',
-                  fontSize: 13,
-                ),
-                decoration: const InputDecoration(
-                  hintText: '{\n  "key": "value"\n}',
-                  alignLabelWithHint: true,
-                  border: OutlineInputBorder(),
-                ),
               ),
             ] else if (c.bodyType == BodyType.form)
               FormBodyEditor(
@@ -488,6 +477,160 @@ class _HeadersTab extends StatelessWidget {
           '+ Accept: application/json',
           style: TextStyle(color: theme.primaryColor, fontSize: 12),
         ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Syntax-highlighting JSON body editor
+// Uses TextEditingController.buildTextSpan to colour text while editing.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _JsonHighlightController extends TextEditingController {
+  _JsonHighlightController({String text = ''}) : super(text: text);
+
+  static const Color _keyColor   = Color(0xFF79C0FF);
+  static const Color _strColor   = Color(0xFF7EE787);
+  static const Color _numColor   = Color(0xFFFF9A4D);
+  static const Color _boolColor  = Color(0xFFD2A8FF);
+  static const Color _punctColor = Color(0xFF8B949E);
+  static const Color _plain      = Color(0xFFE8E9ED);
+
+  @override
+  TextSpan buildTextSpan({required BuildContext context, TextStyle? style, required bool withComposing}) {
+    return TextSpan(style: style, children: _tokenise(text));
+  }
+
+  List<TextSpan> _tokenise(String src) {
+    final spans = <TextSpan>[];
+    int pos = 0;
+    final len = src.length;
+    while (pos < len) {
+      final ch = src[pos];
+      // newline / whitespace — keep as-is
+      if (ch == '\n' || ch == '\r' || ch == ' ' || ch == '\t') {
+        spans.add(TextSpan(text: ch, style: const TextStyle(color: _plain)));
+        pos++; continue;
+      }
+      // string
+      if (ch == '"') {
+        int end = pos + 1;
+        while (end < len) {
+          if (src[end] == '\\') { end += 2; continue; }
+          if (src[end] == '"') { end++; break; }
+          end++;
+        }
+        final raw = src.substring(pos, end);
+        int after = end;
+        while (after < len && (src[after] == ' ' || src[after] == '\t')) after++;
+        final isKey = after < len && src[after] == ':';
+        spans.add(TextSpan(text: raw, style: TextStyle(
+          color: isKey ? _keyColor : _strColor,
+          fontWeight: isKey ? FontWeight.w600 : FontWeight.normal,
+        )));
+        pos = end; continue;
+      }
+      // number
+      if (ch == '-' || (ch.codeUnitAt(0) >= 48 && ch.codeUnitAt(0) <= 57)) {
+        int end = pos + 1;
+        while (end < len) {
+          final cu = src[end].codeUnitAt(0);
+          if ((cu >= 48 && cu <= 57) || src[end] == '.' || src[end] == 'e' ||
+              src[end] == 'E' || src[end] == '+' || src[end] == '-') { end++; }
+          else break;
+        }
+        spans.add(TextSpan(text: src.substring(pos, end), style: const TextStyle(color: _numColor)));
+        pos = end; continue;
+      }
+      // keywords
+      if (src.startsWith('true', pos))  { spans.add(const TextSpan(text: 'true',  style: TextStyle(color: _boolColor, fontStyle: FontStyle.italic))); pos += 4; continue; }
+      if (src.startsWith('false', pos)) { spans.add(const TextSpan(text: 'false', style: TextStyle(color: _boolColor, fontStyle: FontStyle.italic))); pos += 5; continue; }
+      if (src.startsWith('null', pos))  { spans.add(const TextSpan(text: 'null',  style: TextStyle(color: _boolColor, fontStyle: FontStyle.italic))); pos += 4; continue; }
+      // punctuation
+      if ('{}[],:'.contains(ch)) { spans.add(TextSpan(text: ch, style: const TextStyle(color: _punctColor))); pos++; continue; }
+      // fallback
+      spans.add(TextSpan(text: ch, style: const TextStyle(color: _plain)));
+      pos++;
+    }
+    return spans;
+  }
+}
+
+class _JsonBodyEditor extends StatefulWidget {
+  const _JsonBodyEditor({
+    required this.controller,
+    required this.focusNode,
+    required this.theme,
+    required this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final PostyTheme theme;
+  final ValueChanged<String> onChanged;
+
+  @override
+  State<_JsonBodyEditor> createState() => _JsonBodyEditorState();
+}
+
+class _JsonBodyEditorState extends State<_JsonBodyEditor> {
+  late final _JsonHighlightController _highlightController;
+
+  @override
+  void initState() {
+    super.initState();
+    _highlightController = _JsonHighlightController(text: widget.controller.text);
+    // Keep the two controllers in sync
+    widget.controller.addListener(_syncFromParent);
+    _highlightController.addListener(_syncToParent);
+  }
+
+  void _syncFromParent() {
+    if (_highlightController.text != widget.controller.text) {
+      _highlightController.value = widget.controller.value;
+    }
+  }
+
+  void _syncToParent() {
+    widget.onChanged(_highlightController.text);
+    if (widget.controller.text != _highlightController.text) {
+      widget.controller.value = _highlightController.value;
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_syncFromParent);
+    _highlightController.removeListener(_syncToParent);
+    _highlightController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = widget.theme;
+    return TextField(
+      controller: _highlightController,
+      focusNode: widget.focusNode,
+      maxLines: null,
+      minLines: 12,
+      style: const TextStyle(
+        color: Color(0xFFE8E9ED),
+        fontFamily: 'monospace',
+        fontSize: 13,
+        height: 1.5,
+      ),
+      cursorColor: theme.primaryColor,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: const Color(0xFF16171D),
+        hintText: '{\n  "key": "value"\n}',
+        hintStyle: TextStyle(color: theme.textSecondary.withValues(alpha: 0.4), fontFamily: 'monospace'),
+        alignLabelWithHint: true,
+        border: OutlineInputBorder(borderSide: BorderSide(color: theme.borderColor)),
+        enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: theme.borderColor)),
+        focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: theme.primaryColor)),
       ),
     );
   }
